@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math';
 
 import 'package:share/share.dart';
 
@@ -31,12 +32,37 @@ class _RiddlePageState extends State<RiddlePage> {
   int attempts = 0;
   int hintsUsed = 0;
   bool isSolved = false;
+  bool isLoading = true;
   Duration elapsedTime = Duration();
-  DateTime startTime = DateTime.now();
+  late DateTime startTime;
   String correctAnswer = '';
   TextEditingController answerController = TextEditingController();
+  String? currentOneLiner;
 
   List<Hint> hints = [];
+
+  @override
+  void initState() {
+    super.initState();
+
+    isLoading = true;
+    currentOneLiner = getRandomOneLiner();
+
+    fetchRiddle().then((data) {
+      setState(() {
+        riddle = data['riddle'];
+        correctAnswer = data['correctAnswer'];
+        hints = (data['hints'] as List<dynamic>)
+            .map((hint) => Hint(
+                  description: hint['description'],
+                  content: hint['content'],
+                ))
+            .toList();
+        isLoading = false;
+        startTime = DateTime.now(); // Set startTime here
+      });
+    });
+  }
 
   void onHintRevealed() {
     setState(() {
@@ -44,23 +70,8 @@ class _RiddlePageState extends State<RiddlePage> {
     });
   }
 
-  Future<void> fetchAndSetData() async {
-    final data = await fetchRiddle();
-    setState(() {
-      riddle = data['riddle'];
-      correctAnswer = data['correctAnswer'];
-      hints = (data['hints'] as List<dynamic>)
-          .map((hint) => Hint(
-                description: hint['description'],
-                content: hint['content'],
-              ))
-          .toList();
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    WidgetsBinding.instance!.addPostFrameCallback((_) => fetchAndSetData());
     return Scaffold(
       appBar: AppBar(
         title: Text('Riddle Me This!'),
@@ -74,11 +85,26 @@ class _RiddlePageState extends State<RiddlePage> {
               height: MediaQuery.of(context).size.height * 3 / 8,
               padding: EdgeInsets.all(16),
               child: Center(
-                child: Text(
-                  riddle,
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center,
-                ),
+                child: isLoading
+                    ? Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(height: 16),
+                          Text(
+                            currentOneLiner ?? '',
+                            style: TextStyle(
+                                fontSize: 16, fontStyle: FontStyle.italic),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      )
+                    : Text(
+                        riddle,
+                        style: TextStyle(
+                            fontSize: 24, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
               ),
             ),
             // User input section
@@ -171,9 +197,11 @@ class _RiddlePageState extends State<RiddlePage> {
                           stream: Stream.periodic(Duration(seconds: 1)),
                           builder: (context, snapshot) {
                             return Text(
-                              isSolved
-                                  ? '${elapsedTime.inHours.toString().padLeft(2, '0')}:${elapsedTime.inMinutes.remainder(60).toString().padLeft(2, '0')}:${elapsedTime.inSeconds.remainder(60).toString().padLeft(2, '0')}'
-                                  : '${DateTime.now().difference(startTime).inHours.toString().padLeft(2, '0')}:${DateTime.now().difference(startTime).inMinutes.remainder(60).toString().padLeft(2, '0')}:${DateTime.now().difference(startTime).inSeconds.remainder(60).toString().padLeft(2, '0')}',
+                              isLoading
+                                  ? '' // Show empty string while loading
+                                  : isSolved
+                                      ? '${elapsedTime.inHours.toString().padLeft(2, '0')}:${elapsedTime.inMinutes.remainder(60).toString().padLeft(2, '0')}:${elapsedTime.inSeconds.remainder(60).toString().padLeft(2, '0')}'
+                                      : '${DateTime.now().difference(startTime).inHours.toString().padLeft(2, '0')}:${DateTime.now().difference(startTime).inMinutes.remainder(60).toString().padLeft(2, '0')}:${DateTime.now().difference(startTime).inSeconds.remainder(60).toString().padLeft(2, '0')}',
                               style: TextStyle(fontSize: 16),
                             );
                           },
@@ -323,6 +351,17 @@ class _RiddlePageState extends State<RiddlePage> {
         );
       },
     );
+  }
+
+  String getRandomOneLiner() {
+    List<String> oneLiners = [
+      "I'm working at the speed of light, but it still takes time!",
+      "Good things come to those who wait... just a moment longer!",
+      "I'd tell a joke while you wait, but I'm too busy loading!",
+      "Just like a watched pot never boils, watching me won't make me load faster!",
+    ];
+
+    return oneLiners[Random().nextInt(oneLiners.length)];
   }
 }
 
