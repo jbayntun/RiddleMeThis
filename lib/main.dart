@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'package:share/share.dart';
 
+import 'mock_api.dart';
+
 void main() {
   runApp(DailyRiddleApp());
 }
@@ -25,19 +27,16 @@ class RiddlePage extends StatefulWidget {
 }
 
 class _RiddlePageState extends State<RiddlePage> {
-  String riddle = "What has keys but can't open locks?";
+  String riddle = '';
   int attempts = 0;
   int hintsUsed = 0;
   bool isSolved = false;
   Duration elapsedTime = Duration();
   DateTime startTime = DateTime.now();
-  String correctAnswer = "example";
+  String correctAnswer = '';
   TextEditingController answerController = TextEditingController();
 
-  List<Hint> hints = [
-    Hint(description: "Number of letters", content: "5"),
-    Hint(description: "Rhymes with", content: "mouse"),
-  ];
+  List<Hint> hints = [];
 
   void onHintRevealed() {
     setState(() {
@@ -45,8 +44,23 @@ class _RiddlePageState extends State<RiddlePage> {
     });
   }
 
+  Future<void> fetchAndSetData() async {
+    final data = await fetchRiddle();
+    setState(() {
+      riddle = data['riddle'];
+      correctAnswer = data['correctAnswer'];
+      hints = (data['hints'] as List<dynamic>)
+          .map((hint) => Hint(
+                description: hint['description'],
+                content: hint['content'],
+              ))
+          .toList();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    WidgetsBinding.instance!.addPostFrameCallback((_) => fetchAndSetData());
     return Scaffold(
       appBar: AppBar(
         title: Text('Riddle Me This!'),
