@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'dart:math';
 
 import 'package:share/share.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 
-import 'mock_api.dart';
+import 'user_key_helper.dart';
+import 'mock_api.dart'; // TODO temporary
+import 'api_client.dart';
 
 void main() {
   runApp(DailyRiddleApp());
@@ -38,12 +41,22 @@ class _RiddlePageState extends State<RiddlePage> {
   String correctAnswer = '';
   TextEditingController answerController = TextEditingController();
   String? currentOneLiner;
+  String? _userKey;
 
   List<Hint> hints = [];
 
   @override
   void initState() {
     super.initState();
+
+    // Check for user key
+    UserKeyHelper.getUserKey().then((userKey) {
+      if (userKey == null) {
+        WidgetsBinding.instance!.addPostFrameCallback((_) {
+          showUserKeyCheckModal(context);
+        });
+      }
+    });
 
     isLoading = true;
     currentOneLiner = getRandomOneLiner();
@@ -353,6 +366,100 @@ class _RiddlePageState extends State<RiddlePage> {
     );
   }
 
+  void showUserKeyCheckModal(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        TextEditingController userIdController = TextEditingController();
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return AlertDialog(
+              title: Text('Welcome to Riddle Me This!'),
+              content: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (_userKey != null)
+                      Text('User Key: $_userKey'), // Display the user key
+                    Text('Please choose an option:'),
+                    SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () async {
+                        // Handle new account creation
+                        await onNewAccountPressed();
+                      },
+                      child: Text('Create a New Account'),
+                    ),
+                    SizedBox(height: 16),
+                    Text('Or connect an existing account:'),
+                    SizedBox(height: 8),
+                    TextField(
+                      controller: userIdController,
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Enter your user_id',
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () async {
+                            String? userInputUuid =
+                                userIdController.text.trim();
+                            if (userInputUuid.isNotEmpty) {
+                              // Get device info
+                              Map<String, dynamic> deviceInfo =
+                                  await getDeviceInfo();
+
+                              // Call the API to update the user's device info
+                              bool isSuccessful = await ApiClient()
+                                  .updateUserDeviceInfo(
+                                      userInputUuid, deviceInfo);
+
+                              if (isSuccessful) {
+                                // Save the user key to the device
+                                await UserKeyHelper.setUserKey(userInputUuid);
+
+                                // Update the UI to show the user key
+                                setState(() {
+                                  _userKey = userInputUuid;
+                                });
+
+                                // Close the modal
+                                Navigator.of(context).pop();
+                              } else {
+                                // Show a message that the provided user ID is not valid
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                      content: Text(
+                                          'Invalid User ID. Please try again.')),
+                                );
+                              }
+                            } else {
+                              // Show a message that the user ID field is empty
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                    content: Text('Please enter a User ID.')),
+                              );
+                            }
+                          },
+                          child: Text('Connect'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   String getRandomOneLiner() {
     List<String> oneLiners = [
       "I'm working at the speed of light, but it still takes time!",
@@ -362,6 +469,67 @@ class _RiddlePageState extends State<RiddlePage> {
     ];
 
     return oneLiners[Random().nextInt(oneLiners.length)];
+  }
+
+  Future<Map<String, dynamic>> getDeviceInfo() async {
+    DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+    Map<String, dynamic> deviceData = {};
+
+    try {
+      if (Theme.of(context).platform == TargetPlatform.android) {
+        AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
+        deviceData = {
+          'os': 'Android',
+          'os_version': androidInfo.version.release,
+          'device_model': androidInfo.model,
+        };
+      } else if (Theme.of(context).platform == TargetPlatform.iOS) {
+        IosDeviceInfo iosInfo = await deviceInfo.iosInfo;
+        deviceData = {
+          'os': 'iOS',
+          'os_version': iosInfo.systemVersion,
+          'device_model': iosInfo.utsname.machine,
+        };
+      }
+    } catch (e) {
+      print('Failed to get device info: $e');
+    }
+
+    return deviceData;
+  }
+
+  Future<void> onNewAccountPressed() async {
+    try {
+      // Get device info
+      Map<String, dynamic> deviceInfo = await getDeviceInfo();
+
+      // Hardcoded device info
+      // Map<String, dynamic> deviceInfo = {
+      //   'os': 'Android',
+      //   'os_version': '10.0',
+      //   'device_model': 'Pixel 4a',
+      // };
+
+      // Call the API to create a new user
+      String? newUserKey = await ApiClient().createUser(deviceInfo);
+
+      if (newUserKey != null) {
+        // Save the user key to the device
+        await UserKeyHelper.setUserKey(newUserKey);
+
+        // Update the UI to show the user key
+        setState(() {
+          _userKey = newUserKey;
+        });
+
+        // Close the modal
+        Navigator.of(context).pop();
+      } else {
+        print('Error: Failed to create a new user.');
+      }
+    } catch (e) {
+      print('Error: ${e.toString()}');
+    }
   }
 }
 
