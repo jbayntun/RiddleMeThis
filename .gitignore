@@ -76,7 +76,8 @@ app.*.map.json
 **/ios/Flutter/Flutter.framework
 **/ios/Flutter/Flutter.podspec
 **/ios/Flutter/Generated.xcconfig
-**/ios/Flutter/Debug.xcconfig
+ios/*
+macos/*
 **/ios/Flutter/Release.xcconfig
 **/ios/Flutter/ephemeral
 **/ios/Flutter/app.flx
