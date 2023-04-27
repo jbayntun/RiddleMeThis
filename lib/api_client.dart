@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+import 'daily_riddle.dart';
+
 class ApiClient {
   static const String _apiBaseUrl = 'http://localhost:8000';
 
@@ -34,6 +36,21 @@ class ApiClient {
     } else {
       print('Error updating user device info: ${response.body}');
       return false;
+    }
+  }
+
+  Future<DailyRiddle> getDailyRiddle() async {
+    final String dailyRiddleUrl = '$_apiBaseUrl/api/daily_riddle/';
+
+    final response = await http.get(
+      Uri.parse(dailyRiddleUrl),
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode == 200) {
+      return DailyRiddle.fromJson(json.decode(response.body));
+    } else {
+      throw Exception('Failed to load daily riddle: ${response.body}');
     }
   }
 }
