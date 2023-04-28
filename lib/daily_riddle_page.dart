@@ -22,6 +22,7 @@ class _DailyRiddlePageState extends State<DailyRiddlePage> {
   int _guessesUsed = 0;
   int _usedHints = 0;
   bool _puzzleCompleted = false;
+  Set<int> _revealedHints = Set();
 
   @override
   void initState() {
@@ -34,32 +35,66 @@ class _DailyRiddlePageState extends State<DailyRiddlePage> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Hints'),
-          content: SingleChildScrollView(
-            child: ListBody(
-              children: hints.map((hint) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(hint.description),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 16.0),
-                      child: Text(hint.hint),
-                    ),
-                  ],
-                );
-              }).toList(),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text('Close'),
-            ),
-          ],
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return AlertDialog(
+              title: Text('Hints'),
+              content: SingleChildScrollView(
+                child: ListBody(
+                  children: hints.asMap().entries.map((entry) {
+                    int index = entry.key;
+                    Hint hint = entry.value;
+                    bool hintRevealed = _revealedHints.contains(index);
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            hint.description,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          hintRevealed
+                              ? Text(
+                                  hint.hint,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.grey[700],
+                                  ),
+                                )
+                              : TextButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      _revealedHints.add(index);
+                                    });
+
+                                    this.setState(() {
+                                      _usedHints++;
+                                    });
+                                  },
+                                  child: Text('Reveal Hint'),
+                                ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: Text('Close'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
