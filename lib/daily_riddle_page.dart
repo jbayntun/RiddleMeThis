@@ -5,6 +5,8 @@ import 'api_client.dart';
 import 'package:daily_riddle_app/success_page.dart';
 import 'package:daily_riddle_app/failure_page.dart';
 
+import 'dart:async';
+
 class DailyRiddlePage extends StatefulWidget {
   final String userId;
 
@@ -23,12 +25,45 @@ class _DailyRiddlePageState extends State<DailyRiddlePage> {
   int _usedHints = 0;
   bool _puzzleCompleted = false;
   Set<int> _revealedHints = Set();
+  Timer? _timer;
+  Duration _elapsedTime = Duration();
 
   @override
   void initState() {
     super.initState();
     apiClient = ApiClient();
     dailyRiddle = apiClient.getDailyRiddle();
+    _startTimer();
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(
+      Duration(seconds: 1),
+      (timer) {
+        if (!_puzzleCompleted) {
+          setState(() {
+            _elapsedTime = _elapsedTime + Duration(seconds: 1);
+          });
+        } else {
+          _timer?.cancel();
+        }
+      },
+    );
+  }
+
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, "0");
+    String twoDigitHours = twoDigits(duration.inHours);
+    String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
+    String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
+
+    return "$twoDigitHours:$twoDigitMinutes:$twoDigitSeconds";
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   void _showHintsDialog(BuildContext context, List<Hint> hints) {
@@ -269,6 +304,16 @@ class _DailyRiddlePageState extends State<DailyRiddlePage> {
                           ),
                         ),
                       ],
+                    ),
+                  ),
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text(
+                        _formatDuration(_elapsedTime),
+                        style: TextStyle(
+                            fontSize: 24, fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                   SizedBox(height: 15),
