@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:daily_riddle_app/main.dart';
 import 'package:daily_riddle_app/daily_riddle.dart';
 import 'api_client.dart';
+import 'package:daily_riddle_app/success_page.dart';
+import 'package:daily_riddle_app/failure_page.dart';
 
 class DailyRiddlePage extends StatefulWidget {
   final String userId;
@@ -17,7 +19,9 @@ class _DailyRiddlePageState extends State<DailyRiddlePage> {
   TextEditingController answerController = TextEditingController();
   late Future<DailyRiddle> dailyRiddle;
   final int _maxGuesses = 5;
-  int _currentGuesses = 0;
+  int _guessesUsed = 0;
+  int _usedHints = 0;
+  bool _puzzleCompleted = false;
 
   @override
   void initState() {
@@ -26,61 +30,102 @@ class _DailyRiddlePageState extends State<DailyRiddlePage> {
     dailyRiddle = apiClient.getDailyRiddle();
   }
 
-  void _checkAnswer(String userAnswer, String correctAnswer) {
-    setState(() {
-      _currentGuesses++;
-    });
-    if (_currentGuesses >= _maxGuesses &&
-        userAnswer.trim().toLowerCase() != correctAnswer.trim().toLowerCase()) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text('Out of guesses! 😅'),
-            content: Text(
-                "You've used all your guesses. Don't worry, there's always tomorrow to try again!"),
-          );
-        },
-      );
-    } else if (userAnswer.trim().toLowerCase() ==
-        correctAnswer.trim().toLowerCase()) {
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text('Congratulations!'),
-            content: Text('Your answer is correct! 🎉'),
-            actions: <Widget>[
-              TextButton(
-                child: Text('Close'),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-              ),
-            ],
-          );
-        },
+  void _showHintsDialog(BuildContext context, List<Hint> hints) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Hints'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: hints.map((hint) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(hint.description),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 16.0),
+                      child: Text(hint.hint),
+                    ),
+                  ],
+                );
+              }).toList(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _checkAnswer(String answer, String correctAnswer) {
+    if (answer.isEmpty || _puzzleCompleted) {
+      return; // Return early if the input is empty or the puzzle is completed
+    }
+
+    if (answer.trim().toLowerCase() == correctAnswer.trim().toLowerCase()) {
+      setState(() {
+        _guessesUsed++;
+        _puzzleCompleted = true;
+      });
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => SuccessPage()),
       );
     } else {
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text('Oops!'),
-            content: Text('Sorry, your answer is incorrect. Please try again.'),
-            actions: <Widget>[
-              TextButton(
-                child: Text('Close'),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-              ),
-            ],
-          );
-        },
-      );
+      setState(() {
+        _guessesUsed++;
+        answerController.clear(); // Clear the input after an incorrect guess
+      });
+
+      if (_guessesUsed >= _maxGuesses) {
+        setState(() {
+          _puzzleCompleted = true;
+        });
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) => FailurePage(correctAnswer: correctAnswer)),
+        );
+      } else {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return _getIncorrectGuessDialog();
+          },
+        );
+      }
     }
+  }
+
+  Widget _getIncorrectGuessDialog() {
+    return AlertDialog(
+      title: Text('Oops!'),
+      content: SingleChildScrollView(
+        child: ListBody(
+          children: <Widget>[
+            Text('That guess was incorrect. Try again!'),
+          ],
+        ),
+      ),
+      actions: <Widget>[
+        TextButton(
+          child: Text('OK'),
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+        ),
+      ],
+    );
   }
 
   @override
@@ -94,60 +139,104 @@ class _DailyRiddlePageState extends State<DailyRiddlePage> {
           future: dailyRiddle,
           builder: (context, snapshot) {
             if (snapshot.hasData) {
-              return Stack(
+              return Column(
                 children: [
-                  SingleChildScrollView(
-                    padding: EdgeInsets.all(16.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          snapshot.data!.riddle,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 24),
-                        ),
-                        SizedBox(height: 24),
-                        TextField(
-                          controller: answerController,
-                          decoration: InputDecoration(
-                            labelText: 'Your answer',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: () {
-                            _checkAnswer(
-                              answerController.text,
-                              snapshot.data!.correctAnswer,
-                            );
-                          },
-                          child: Text('Guess Answer'),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Align(
-                    alignment: Alignment.bottomLeft,
-                    child: Padding(
+                  Expanded(
+                    child: SingleChildScrollView(
                       padding: EdgeInsets.all(16.0),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
+                          SizedBox(height: 24),
                           Text(
-                            'Guess Counter',
-                            style: TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.bold),
+                            snapshot.data!.riddle,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 24),
                           ),
-                          Text(
-                            'Guesses: $_currentGuesses / $_maxGuesses',
-                            style: TextStyle(fontSize: 16),
+                          SizedBox(height: 24),
+                          TextField(
+                            controller: answerController,
+                            decoration: InputDecoration(
+                              labelText: 'Your answer',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: () {
+                                    _checkAnswer(
+                                      answerController.text,
+                                      snapshot.data!.correctAnswer,
+                                    );
+                                  },
+                                  child: Text('Guess Answer'),
+                                ),
+                              ),
+                              SizedBox(
+                                  width:
+                                      8), // Optional: add some space between the buttons
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: () {
+                                    _showHintsDialog(
+                                        context, snapshot.data!.hints);
+                                  },
+                                  child: Text('Hints'),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
                     ),
                   ),
+                  Spacer(),
+                  Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Guess Counter',
+                                style: TextStyle(
+                                    fontSize: 18, fontWeight: FontWeight.bold),
+                              ),
+                              Text(
+                                'Guesses: $_guessesUsed / $_maxGuesses',
+                                style: TextStyle(fontSize: 16),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Hints',
+                                style: TextStyle(
+                                    fontSize: 18, fontWeight: FontWeight.bold),
+                              ),
+                              Text(
+                                'Used: $_usedHints / ${snapshot.data!.hints.length}',
+                                style: TextStyle(fontSize: 16),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 15),
                 ],
               );
             } else if (snapshot.hasError) {
