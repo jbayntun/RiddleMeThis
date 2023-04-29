@@ -1,3 +1,4 @@
+import 'package:daily_riddle_app/puzzle_completed_page.dart';
 import 'package:flutter/material.dart';
 import 'package:daily_riddle_app/main.dart';
 import 'package:daily_riddle_app/daily_riddle.dart';
@@ -136,19 +137,23 @@ class _DailyRiddlePageState extends State<DailyRiddlePage> {
   }
 
   void _checkAnswer(String answer, String correctAnswer) {
-    if (answer.isEmpty || _puzzleCompleted) {
-      return; // Return early if the input is empty or the puzzle is completed
-    }
-
     if (answer.trim().toLowerCase() == correctAnswer.trim().toLowerCase()) {
       setState(() {
         _guessesUsed++;
         _puzzleCompleted = true;
       });
 
-      Navigator.push(
+      Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => SuccessPage()),
+        MaterialPageRoute(
+          builder: (context) => PuzzleCompletedPage(
+            isSuccess: true,
+            correctAnswer: correctAnswer,
+            guessesUsed: _guessesUsed,
+            hintsUsed: _usedHints,
+            timeTaken: _elapsedTime,
+          ),
+        ),
       );
     } else {
       setState(() {
@@ -161,10 +166,17 @@ class _DailyRiddlePageState extends State<DailyRiddlePage> {
           _puzzleCompleted = true;
         });
 
-        Navigator.push(
+        Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-              builder: (context) => FailurePage(correctAnswer: correctAnswer)),
+            builder: (context) => PuzzleCompletedPage(
+              isSuccess: false,
+              correctAnswer: correctAnswer,
+              guessesUsed: _guessesUsed,
+              hintsUsed: _usedHints,
+              timeTaken: _elapsedTime,
+            ),
+          ),
         );
       } else {
         showDialog(
