@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:daily_riddle_app/main.dart';
 import 'package:daily_riddle_app/daily_riddle.dart';
 import 'api_client.dart';
-import 'package:daily_riddle_app/success_page.dart';
-import 'package:daily_riddle_app/failure_page.dart';
 
 import 'dart:async';
 

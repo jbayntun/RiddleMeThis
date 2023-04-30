@@ -2,9 +2,18 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'daily_riddle.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ApiClient {
   static const String _apiBaseUrl = 'http://localhost:8000';
+
+  static final String _appToken = dotenv.env['RIDDLE_API_SECRET'] ?? '';
+
+  // Create a static header value
+  static final Map<String, String> _headers = {
+    'Content-Type': 'application/json',
+    'App-Token': _appToken,
+  };
 
   Future<String?> createUser(Map<String, dynamic> deviceInfo) async {
     final String createUserUrl = '$_apiBaseUrl/create_user/';
@@ -12,7 +21,7 @@ class ApiClient {
     final response = await http.post(
       Uri.parse(createUserUrl),
       body: json.encode({'device_info': deviceInfo}),
-      headers: {'Content-Type': 'application/json'},
+      headers: _headers,
     );
 
     if (response.statusCode == 201) {
@@ -28,7 +37,7 @@ class ApiClient {
     final response = await http.patch(
       Uri.parse(_apiBaseUrl + userProfilesUrl + userUuid + '/'),
       body: json.encode({'device_info': deviceInfo}),
-      headers: {'Content-Type': 'application/json'},
+      headers: _headers,
     );
 
     if (response.statusCode == 200) {
@@ -44,7 +53,7 @@ class ApiClient {
 
     final response = await http.get(
       Uri.parse(dailyRiddleUrl),
-      headers: {'Content-Type': 'application/json'},
+      headers: _headers,
     );
 
     if (response.statusCode == 200) {

@@ -1,3 +1,7 @@
+# environment var file
+*.env
+
+
 # Miscellaneous
 *.class
 *.log
