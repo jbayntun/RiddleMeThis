@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:daily_riddle_app/main.dart';
 import 'package:daily_riddle_app/daily_riddle.dart';
 import 'api_client.dart';
+import 'user_key_helper.dart';
 
 import 'dart:async';
 
@@ -18,7 +19,7 @@ class DailyRiddlePage extends StatefulWidget {
 class _DailyRiddlePageState extends State<DailyRiddlePage> {
   late ApiClient apiClient;
   TextEditingController answerController = TextEditingController();
-  late Future<DailyRiddle> dailyRiddle;
+  Future<DailyRiddle>? dailyRiddle;
   final int _maxGuesses = 5;
   int _guessesUsed = 0;
   int _usedHints = 0;
@@ -30,8 +31,8 @@ class _DailyRiddlePageState extends State<DailyRiddlePage> {
   @override
   void initState() {
     super.initState();
-    apiClient = ApiClient();
-    dailyRiddle = apiClient.getDailyRiddle();
+    dailyRiddle = null;
+    _initialize();
     _startTimer();
   }
 
@@ -63,6 +64,37 @@ class _DailyRiddlePageState extends State<DailyRiddlePage> {
   void dispose() {
     _timer?.cancel();
     super.dispose();
+  }
+
+  Future<void> _initialize() async {
+    apiClient = ApiClient();
+    String? userId = await UserKeyHelper.getUserKey();
+    if (userId != null) {
+      dailyRiddle = apiClient.getDailyRiddle(userId);
+    } else {
+      // Handle the case when the user ID is not available
+      // You can show an error message or redirect to a different page
+    }
+  }
+
+  void _showErrorDialog(int errorCode, String errorMessage) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Error $errorCode'),
+          content: Text(errorMessage),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _showHintsDialog(BuildContext context, List<Hint> hints) {

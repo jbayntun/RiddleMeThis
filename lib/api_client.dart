@@ -48,8 +48,8 @@ class ApiClient {
     }
   }
 
-  Future<DailyRiddle> getDailyRiddle() async {
-    final String dailyRiddleUrl = '$_apiBaseUrl/api/daily_riddle/';
+  Future<DailyRiddle> getDailyRiddle(String userId) async {
+    final String dailyRiddleUrl = '$_apiBaseUrl/api/daily_riddle/$userId/';
 
     final response = await http.get(
       Uri.parse(dailyRiddleUrl),
