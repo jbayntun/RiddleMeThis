@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'daily_riddle.dart';
+import 'user_key_helper.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ApiClient {
@@ -60,6 +61,45 @@ class ApiClient {
       return DailyRiddle.fromJson(json.decode(response.body));
     } else {
       throw Exception('Failed to load daily riddle: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>?> attemptRiddle({
+    required int riddleId,
+    required int numberOfGuesses,
+    required int numberOfHintsUsed,
+    required int timeTaken,
+    required String status,
+  }) async {
+    final String url = '$_apiBaseUrl/api/riddle_attempts/';
+
+    final String? userId = await UserKeyHelper.getUserKey();
+    if (userId == null) {
+      print('Error: User ID not found');
+      return null;
+    }
+
+    final Map<String, dynamic> data = {
+      'user': userId,
+      'riddle': riddleId,
+      'number_of_guesses': numberOfGuesses,
+      'number_of_hints_used': numberOfHintsUsed,
+      'time_taken': timeTaken,
+      'status': status,
+    };
+
+    final response = await http.post(
+      Uri.parse(url),
+      headers: _headers,
+      body: jsonEncode(data),
+    );
+
+    if (response.statusCode == 201) {
+      print('RiddleAttempt created successfully!');
+      return jsonDecode(response.body);
+    } else {
+      print('Error: ${response.statusCode} ${response.body}');
+      return null;
     }
   }
 }

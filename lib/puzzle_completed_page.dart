@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:share/share.dart';
+import 'dart:async';
+import 'api_client.dart';
+import 'utils.dart';
 
-class PuzzleCompletedPage extends StatelessWidget {
+class PuzzleCompletedPage extends StatefulWidget {
   final bool isSuccess;
   final String correctAnswer;
   final int guessesUsed;
   final int hintsUsed;
   final Duration timeTaken; // time in seconds
+  final int riddleId;
 
   PuzzleCompletedPage({
     required this.isSuccess,
@@ -14,7 +18,79 @@ class PuzzleCompletedPage extends StatelessWidget {
     required this.guessesUsed,
     required this.hintsUsed,
     required this.timeTaken,
+    required this.riddleId,
   });
+
+  @override
+  _PuzzleCompletedPageState createState() => _PuzzleCompletedPageState();
+}
+
+class _PuzzleCompletedPageState extends State<PuzzleCompletedPage> {
+  late Future<Map<String, dynamic>?> _fetchStatsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchStatsFuture = _fetchStatisticsData();
+  }
+
+  Future<Map<String, dynamic>?> _fetchStatisticsData() async {
+    final apiClient = ApiClient();
+    return await apiClient.attemptRiddle(
+      riddleId: widget.riddleId,
+      numberOfGuesses: widget.guessesUsed,
+      numberOfHintsUsed: widget.hintsUsed,
+      timeTaken: widget.timeTaken.inSeconds,
+      status: widget.isSuccess ? 'won' : 'lost',
+    );
+  }
+
+  void _showStatsModal(BuildContext context, Map<String, dynamic> stats) {
+    Map<String, dynamic> statistics =
+        Map<String, dynamic>.from(stats['statistics']);
+
+    Map<String, String> readableTitles = {
+      'average_guesses': 'Average Guesses',
+      'average_time': 'Average Time',
+      'success_rate': 'Success Rate',
+      'win_streak': 'Win Streak',
+      'max_win_streak': 'Max Win Streak',
+    };
+
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return Container(
+          padding: EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Statistics',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+              SizedBox(height: 16), // spacing between the title and the stats
+              ...statistics.entries.map(
+                (entry) => ListTile(
+                  title: Text(readableTitles[entry.key] ?? 'Unknown'),
+                  subtitle: Text(entry.value.toString()),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   String formatDuration(Duration duration) {
     String twoDigits(int n) => n.toString().padLeft(2, '0');
@@ -36,13 +112,13 @@ class PuzzleCompletedPage extends StatelessWidget {
   }
 
   Future<void> _sharePuzzleCompletion() async {
-    String elapsedTime = formatDuration(timeTaken);
+    String elapsedTime = formatDuration(widget.timeTaken);
     String shareText = '';
 
-    if (isSuccess) {
+    if (widget.isSuccess) {
       shareText = '🎉 I just completed the Daily Riddle! 🎉\n\n';
-      shareText += 'Guesses used: $guessesUsed\n';
-      shareText += 'Hints used: $hintsUsed\n';
+      shareText += 'Guesses used: ${widget.guessesUsed}\n';
+      shareText += 'Hints used: ${widget.hintsUsed}\n';
       shareText += 'Time taken: $elapsedTime';
     }
 
@@ -51,58 +127,82 @@ class PuzzleCompletedPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Puzzle Completed'),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            isSuccess
-                ? Text(
-                    'Congratulations! 🎉',
-                    style: TextStyle(fontSize: 24),
-                  )
-                : Text(
-                    'Oh no! 😔',
-                    style: TextStyle(fontSize: 24),
-                  ),
-            SizedBox(height: 16),
-            Text(
-              isSuccess
-                  ? 'You guessed the correct answer!'
-                  : 'You\'ve used all your guesses.',
-              style: TextStyle(fontSize: 18),
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: _fetchStatsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.done &&
+            snapshot.hasData &&
+            snapshot.data != null) {
+          WidgetsBinding.instance!.addPostFrameCallback((_) {
+            _showStatsModal(context, snapshot.data!);
+          });
+        }
+
+        return Scaffold(
+          appBar: AppBar(
+            title: Text('Puzzle Completed'),
+            actions: <Widget>[
+              IconButton(
+                icon: Icon(Icons.settings),
+                onPressed: () => ModalUtils.showUserIdModal(context),
+              ),
+            ],
+          ),
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                widget.isSuccess
+                    ? Text(
+                        'Congratulations! 🎉',
+                        style: TextStyle(fontSize: 24),
+                      )
+                    : Text(
+                        'Oh no! 😔',
+                        style: TextStyle(fontSize: 24),
+                      ),
+                SizedBox(height: 16),
+                Text(
+                  widget.isSuccess
+                      ? 'You guessed the correct answer!'
+                      : 'You\'ve used all your guesses.',
+                  style: TextStyle(fontSize: 18),
+                ),
+                SizedBox(height: 16),
+                widget.isSuccess
+                    ? Container()
+                    : Column(
+                        children: [
+                          Text(
+                            'The correct answer was:',
+                            style: TextStyle(fontSize: 18),
+                          ),
+                          Text(
+                            widget.correctAnswer,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                SizedBox(height: 24),
+                widget.isSuccess
+                    ? ElevatedButton(
+                        onPressed: _sharePuzzleCompletion,
+                        child: Text('Share'),
+                      )
+                    : Container(),
+                SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => _showStatsModal(context, snapshot.data!),
+                  child: Text('Show Statistics'),
+                ),
+              ],
             ),
-            SizedBox(height: 16),
-            isSuccess
-                ? Container()
-                : Column(
-                    children: [
-                      Text(
-                        'The correct answer was:',
-                        style: TextStyle(fontSize: 18),
-                      ),
-                      Text(
-                        correctAnswer,
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-            SizedBox(height: 24),
-            isSuccess
-                ? ElevatedButton(
-                    onPressed: _sharePuzzleCompletion,
-                    child: Text('Share'),
-                  )
-                : Container(),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

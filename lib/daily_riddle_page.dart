@@ -4,6 +4,7 @@ import 'package:daily_riddle_app/main.dart';
 import 'package:daily_riddle_app/daily_riddle.dart';
 import 'api_client.dart';
 import 'user_key_helper.dart';
+import 'utils.dart';
 
 import 'dart:async';
 
@@ -166,7 +167,7 @@ class _DailyRiddlePageState extends State<DailyRiddlePage> {
     );
   }
 
-  void _checkAnswer(String answer, String correctAnswer) {
+  void _checkAnswer(String answer, String correctAnswer, int riddleId) {
     if (answer.trim().toLowerCase() == correctAnswer.trim().toLowerCase()) {
       setState(() {
         _guessesUsed++;
@@ -182,6 +183,7 @@ class _DailyRiddlePageState extends State<DailyRiddlePage> {
             guessesUsed: _guessesUsed,
             hintsUsed: _usedHints,
             timeTaken: _elapsedTime,
+            riddleId: riddleId,
           ),
         ),
       );
@@ -205,6 +207,7 @@ class _DailyRiddlePageState extends State<DailyRiddlePage> {
               guessesUsed: _guessesUsed,
               hintsUsed: _usedHints,
               timeTaken: _elapsedTime,
+              riddleId: riddleId,
             ),
           ),
         );
@@ -245,6 +248,12 @@ class _DailyRiddlePageState extends State<DailyRiddlePage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Daily Riddle'),
+        actions: <Widget>[
+          IconButton(
+            icon: Icon(Icons.settings),
+            onPressed: () => ModalUtils.showUserIdModal(context),
+          ),
+        ],
       ),
       body: Center(
         child: FutureBuilder<DailyRiddle>(
@@ -283,6 +292,7 @@ class _DailyRiddlePageState extends State<DailyRiddlePage> {
                                     _checkAnswer(
                                       answerController.text,
                                       snapshot.data!.correctAnswer,
+                                      snapshot.data!.id,
                                     );
                                   },
                                   child: Text('Guess Answer'),
