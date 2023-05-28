@@ -1,11 +1,11 @@
 // utils.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'user_key_helper.dart';
+import 'shared_prefereces_helper.dart';
 
 class ModalUtils {
   static Future<void> _copyUserIdToClipboard(BuildContext context) async {
-    String? userId = await UserKeyHelper.getUserKey();
+    String? userId = await SharedPreferencesHelper.getUserKey();
     if (userId != null) {
       await Clipboard.setData(ClipboardData(text: userId));
       ScaffoldMessenger.of(context).showSnackBar(
@@ -19,7 +19,7 @@ class ModalUtils {
   }
 
   static void showUserIdModal(BuildContext context) async {
-    String? userId = await UserKeyHelper.getUserKey();
+    String? userId = await SharedPreferencesHelper.getUserKey();
     showModalBottomSheet(
       context: context,
       builder: (BuildContext context) {

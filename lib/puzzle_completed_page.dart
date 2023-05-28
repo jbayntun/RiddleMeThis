@@ -10,7 +10,6 @@ class PuzzleCompletedPage extends StatefulWidget {
   final int guessesUsed;
   final int hintsUsed;
   final Duration timeTaken; // time in seconds
-  final int riddleId;
 
   PuzzleCompletedPage({
     required this.isSuccess,
@@ -18,7 +17,6 @@ class PuzzleCompletedPage extends StatefulWidget {
     required this.guessesUsed,
     required this.hintsUsed,
     required this.timeTaken,
-    required this.riddleId,
   });
 
   @override
@@ -36,13 +34,7 @@ class _PuzzleCompletedPageState extends State<PuzzleCompletedPage> {
 
   Future<Map<String, dynamic>?> _fetchStatisticsData() async {
     final apiClient = ApiClient();
-    return await apiClient.attemptRiddle(
-      riddleId: widget.riddleId,
-      numberOfGuesses: widget.guessesUsed,
-      numberOfHintsUsed: widget.hintsUsed,
-      timeTaken: widget.timeTaken.inSeconds,
-      status: widget.isSuccess ? 'won' : 'lost',
-    );
+    return await apiClient.getStatistics();
   }
 
   void _showStatsModal(BuildContext context, Map<String, dynamic> stats) {

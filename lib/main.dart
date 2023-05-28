@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'dart:io' show Platform;
 
-import 'user_key_helper.dart';
+import 'shared_prefereces_helper.dart';
 import 'api_client.dart';
 import 'daily_riddle_page.dart';
 
@@ -42,7 +40,7 @@ class _WelcomePageState extends State<WelcomePage> {
   }
 
   _checkUserKey() async {
-    String? userKey = await UserKeyHelper.getUserKey();
+    String? userKey = await SharedPreferencesHelper.getUserKey();
     if (userKey != null) {
       _navigateToDailyRiddlePage(userKey);
     }
@@ -87,7 +85,7 @@ class _WelcomePageState extends State<WelcomePage> {
       bool success =
           await apiClient.updateUserDeviceInfo(userKey, await _getDeviceInfo());
       if (success) {
-        await UserKeyHelper.setUserKey(userKey);
+        await SharedPreferencesHelper.setUserKey(userKey);
         _navigateToDailyRiddlePage(userKey);
       } else {
         _showErrorDialog('Could not connect your account. Please try again.');
@@ -109,7 +107,7 @@ class _WelcomePageState extends State<WelcomePage> {
       ApiClient apiClient = ApiClient();
       String? uuid = await apiClient.createUser(await _getDeviceInfo());
       if (uuid != null) {
-        await UserKeyHelper.setUserKey(uuid);
+        await SharedPreferencesHelper.setUserKey(uuid);
         _navigateToDailyRiddlePage(uuid);
       }
     } catch (e) {

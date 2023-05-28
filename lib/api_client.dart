@@ -2,11 +2,11 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'daily_riddle.dart';
-import 'user_key_helper.dart';
+import 'shared_prefereces_helper.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ApiClient {
-  static const String _apiBaseUrl = 'http://localhost:8000';
+  static const String _apiBaseUrl = 'http://3.84.36.103:8000';
 
   static final String _appToken = dotenv.env['RIDDLE_API_SECRET'] ?? '';
 
@@ -64,7 +64,29 @@ class ApiClient {
     }
   }
 
-  Future<Map<String, dynamic>?> attemptRiddle({
+  Future<Map<String, dynamic>?> getStatistics() async {
+    final String? userId = await SharedPreferencesHelper.getUserKey();
+    if (userId == null) {
+      print('Error: User ID not found');
+      return null;
+    }
+
+    final String statisticsUrl = '$_apiBaseUrl/api/statistics/$userId/';
+
+    final response = await http.get(
+      Uri.parse(statisticsUrl),
+      headers: _headers,
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      print('Error: ${response.statusCode} ${response.body}');
+      return null;
+    }
+  }
+
+  Future<bool> attemptRiddle({
     required int riddleId,
     required int numberOfGuesses,
     required int numberOfHintsUsed,
@@ -73,10 +95,10 @@ class ApiClient {
   }) async {
     final String url = '$_apiBaseUrl/api/riddle_attempts/';
 
-    final String? userId = await UserKeyHelper.getUserKey();
+    final String? userId = await SharedPreferencesHelper.getUserKey();
     if (userId == null) {
       print('Error: User ID not found');
-      return null;
+      return false;
     }
 
     final Map<String, dynamic> data = {
@@ -95,11 +117,10 @@ class ApiClient {
     );
 
     if (response.statusCode == 201) {
-      print('RiddleAttempt created successfully!');
-      return jsonDecode(response.body);
+      return true;
     } else {
       print('Error: ${response.statusCode} ${response.body}');
-      return null;
+      return false;
     }
   }
 }

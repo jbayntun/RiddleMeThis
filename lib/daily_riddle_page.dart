@@ -2,8 +2,9 @@ import 'package:daily_riddle_app/puzzle_completed_page.dart';
 import 'package:flutter/material.dart';
 import 'package:daily_riddle_app/main.dart';
 import 'package:daily_riddle_app/daily_riddle.dart';
+import 'package:share/share.dart';
 import 'api_client.dart';
-import 'user_key_helper.dart';
+import 'shared_prefereces_helper.dart';
 import 'utils.dart';
 
 import 'dart:async';
@@ -69,12 +70,60 @@ class _DailyRiddlePageState extends State<DailyRiddlePage> {
 
   Future<void> _initialize() async {
     apiClient = ApiClient();
-    String? userId = await UserKeyHelper.getUserKey();
+    String? userId = await SharedPreferencesHelper.getUserKey();
     if (userId != null) {
       dailyRiddle = apiClient.getDailyRiddle(userId);
+      _updateStoredRiddle();
     } else {
       // Handle the case when the user ID is not available
       // You can show an error message or redirect to a different page
+    }
+  }
+
+  Future<void> _updateStoredRiddle() async {
+    DailyRiddle? fetchedRiddle = await dailyRiddle;
+    DailyRiddle? storedRiddle = await SharedPreferencesHelper.getDailyRiddle();
+
+    // The riddles are not the same or there was no stored riddle, update the stored riddle
+    if (fetchedRiddle != null &&
+        (storedRiddle == null || fetchedRiddle.id != storedRiddle.id)) {
+      await SharedPreferencesHelper.setDailyRiddle(fetchedRiddle);
+      await SharedPreferencesHelper.deleteGameData();
+    } else if (fetchedRiddle != null &&
+        storedRiddle != null &&
+        fetchedRiddle.id == storedRiddle.id) {
+      bool completed =
+          (await SharedPreferencesHelper.getPuzzleCompleted()) ?? false;
+      bool won =
+          (await SharedPreferencesHelper.getCompletedSuccessfully()) ?? false;
+      int guesses = (await SharedPreferencesHelper.getGuessesUsed()) ?? 0;
+      int hints = (await SharedPreferencesHelper.getUsedHints()) ?? 0;
+
+      // The riddles are the same, check for puzzle completion
+      if (completed) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PuzzleCompletedPage(
+              isSuccess: won,
+              correctAnswer: storedRiddle.correctAnswer,
+              guessesUsed: guesses,
+              hintsUsed: hints,
+              timeTaken: _elapsedTime,
+            ),
+          ),
+        );
+      } else {
+        // update the state variables from SharedPreference
+        setState(() async {
+          _guessesUsed = guesses;
+          _usedHints = hints;
+          _puzzleCompleted = completed;
+          _revealedHints =
+              (await SharedPreferencesHelper.getRevealedHints()) ?? Set();
+          _puzzleCompleted = false;
+        });
+      }
     }
   }
 
@@ -138,10 +187,14 @@ class _DailyRiddlePageState extends State<DailyRiddlePage> {
                                   onPressed: () {
                                     setState(() {
                                       _revealedHints.add(index);
+                                      SharedPreferencesHelper.setRevealedHints(
+                                          _revealedHints);
                                     });
 
                                     this.setState(() {
                                       _usedHints++;
+                                      SharedPreferencesHelper.setUsedHints(
+                                          _usedHints);
                                     });
                                   },
                                   child: Text('Reveal Hint'),
@@ -171,8 +224,18 @@ class _DailyRiddlePageState extends State<DailyRiddlePage> {
     if (answer.trim().toLowerCase() == correctAnswer.trim().toLowerCase()) {
       setState(() {
         _guessesUsed++;
+        SharedPreferencesHelper.setGuessesUsed(_guessesUsed);
         _puzzleCompleted = true;
+        SharedPreferencesHelper.setPuzzleCompleted(true);
+        SharedPreferencesHelper.setCompletedSuccessfully(true);
       });
+
+      apiClient.attemptRiddle(
+          riddleId: riddleId,
+          numberOfGuesses: _guessesUsed,
+          numberOfHintsUsed: _usedHints,
+          timeTaken: _elapsedTime.inSeconds,
+          status: 'won');
 
       Navigator.pushReplacement(
         context,
@@ -183,20 +246,28 @@ class _DailyRiddlePageState extends State<DailyRiddlePage> {
             guessesUsed: _guessesUsed,
             hintsUsed: _usedHints,
             timeTaken: _elapsedTime,
-            riddleId: riddleId,
           ),
         ),
       );
     } else {
       setState(() {
         _guessesUsed++;
+        SharedPreferencesHelper.setGuessesUsed(_guessesUsed);
         answerController.clear(); // Clear the input after an incorrect guess
       });
 
       if (_guessesUsed >= _maxGuesses) {
         setState(() {
           _puzzleCompleted = true;
+          SharedPreferencesHelper.setPuzzleCompleted(true);
         });
+
+        apiClient.attemptRiddle(
+            riddleId: riddleId,
+            numberOfGuesses: _guessesUsed,
+            numberOfHintsUsed: _usedHints,
+            timeTaken: _elapsedTime.inSeconds,
+            status: 'lost');
 
         Navigator.pushReplacement(
           context,
@@ -207,7 +278,6 @@ class _DailyRiddlePageState extends State<DailyRiddlePage> {
               guessesUsed: _guessesUsed,
               hintsUsed: _usedHints,
               timeTaken: _elapsedTime,
-              riddleId: riddleId,
             ),
           ),
         );
