@@ -2,6 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'shared_prefereces_helper.dart';
+import 'package:daily_riddle_app/daily_riddle.dart';
+import 'api_client.dart';
 
 class ModalUtils {
   static Future<void> _copyUserIdToClipboard(BuildContext context) async {
@@ -47,5 +49,22 @@ class ModalUtils {
         );
       },
     );
+  }
+
+  static Future<DailyRiddle?> getNewRiddleIfDifferent(
+      ApiClient apiClient, String userId, DailyRiddle currentRiddle) async {
+    try {
+      DailyRiddle newRiddle = await apiClient.getDailyRiddle(userId);
+
+      // Compare the IDs of the new riddle and the current riddle.
+      if (newRiddle.id == currentRiddle.id) {
+        return null;
+      } else {
+        return newRiddle;
+      }
+    } catch (e) {
+      print('Error getting new riddle: $e');
+      return null;
+    }
   }
 }

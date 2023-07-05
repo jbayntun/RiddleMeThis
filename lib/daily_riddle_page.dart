@@ -18,7 +18,8 @@ class DailyRiddlePage extends StatefulWidget {
   _DailyRiddlePageState createState() => _DailyRiddlePageState();
 }
 
-class _DailyRiddlePageState extends State<DailyRiddlePage> {
+class _DailyRiddlePageState extends State<DailyRiddlePage>
+    with WidgetsBindingObserver {
   late ApiClient apiClient;
   TextEditingController answerController = TextEditingController();
   Future<DailyRiddle>? dailyRiddle;
@@ -34,8 +35,37 @@ class _DailyRiddlePageState extends State<DailyRiddlePage> {
   void initState() {
     super.initState();
     dailyRiddle = null;
+    WidgetsBinding.instance!.addObserver(this);
     _initialize();
     _startTimer();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      _getNewRiddle();
+    }
+  }
+
+  Future<void> _getNewRiddle() async {
+    DailyRiddle? currentRiddle = await dailyRiddle;
+    if (currentRiddle == null) return; // Handle when currentRiddle is null
+
+    DailyRiddle? newRiddle = await ModalUtils.getNewRiddleIfDifferent(
+        apiClient, widget.userId, currentRiddle);
+    print("checked new riddle");
+    if (newRiddle != null) {
+      setState(() {
+        dailyRiddle = Future.value(newRiddle);
+        _guessesUsed = 0;
+        _usedHints = 0;
+        _puzzleCompleted = false;
+        _revealedHints = Set();
+        _elapsedTime = Duration();
+      });
+      _updateStoredRiddle();
+    }
   }
 
   void _startTimer() {
@@ -65,6 +95,7 @@ class _DailyRiddlePageState extends State<DailyRiddlePage> {
   @override
   void dispose() {
     _timer?.cancel();
+    WidgetsBinding.instance!.removeObserver(this);
     super.dispose();
   }
 

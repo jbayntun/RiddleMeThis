@@ -6,7 +6,7 @@ import 'shared_prefereces_helper.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ApiClient {
-  static const String _apiBaseUrl = 'http://3.84.36.103:8000';
+  static const String _apiBaseUrl = 'https://riddles.jdb.blue';
 
   static final String _appToken = dotenv.env['RIDDLE_API_SECRET'] ?? '';
 
