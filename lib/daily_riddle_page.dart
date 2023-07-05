@@ -28,7 +28,8 @@ class _DailyRiddlePageState extends State<DailyRiddlePage>
   int _usedHints = 0;
   bool _puzzleCompleted = false;
   Set<int> _revealedHints = Set();
-  Timer? _timer;
+  Timer? _gameClockTimer;
+  Timer? _riddleCheckTimer;
   Duration _elapsedTime = Duration();
 
   @override
@@ -36,6 +37,8 @@ class _DailyRiddlePageState extends State<DailyRiddlePage>
     super.initState();
     dailyRiddle = null;
     WidgetsBinding.instance!.addObserver(this);
+    _riddleCheckTimer =
+        Timer.periodic(Duration(minutes: 30), (Timer t) => _getNewRiddle());
     _initialize();
     _startTimer();
   }
@@ -64,12 +67,31 @@ class _DailyRiddlePageState extends State<DailyRiddlePage>
         _revealedHints = Set();
         _elapsedTime = Duration();
       });
+
       _updateStoredRiddle();
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: Text('New Riddle Available!'),
+            content: Text(
+                'A new riddle has been fetched from the server, time to challenge your brain!'),
+            actions: [
+              TextButton(
+                child: Text('OK'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          );
+        },
+      );
     }
   }
 
   void _startTimer() {
-    _timer = Timer.periodic(
+    _gameClockTimer = Timer.periodic(
       Duration(seconds: 1),
       (timer) {
         if (!_puzzleCompleted) {
@@ -77,7 +99,7 @@ class _DailyRiddlePageState extends State<DailyRiddlePage>
             _elapsedTime = _elapsedTime + Duration(seconds: 1);
           });
         } else {
-          _timer?.cancel();
+          _gameClockTimer?.cancel();
         }
       },
     );
@@ -94,7 +116,8 @@ class _DailyRiddlePageState extends State<DailyRiddlePage>
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _gameClockTimer?.cancel();
+    _riddleCheckTimer?.cancel();
     WidgetsBinding.instance!.removeObserver(this);
     super.dispose();
   }
