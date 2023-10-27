@@ -369,137 +369,156 @@ class _DailyRiddlePageState extends State<DailyRiddlePage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Daily Riddle'),
-        actions: <Widget>[
-          IconButton(
-            icon: Icon(Icons.settings),
-            onPressed: () => ModalUtils.showUserIdModal(context),
-          ),
-        ],
-      ),
-      body: Center(
-        child: FutureBuilder<DailyRiddle>(
-          future: dailyRiddle,
-          builder: (context, snapshot) {
-            if (snapshot.hasData) {
-              return Column(
-                children: [
-                  Expanded(
-                    child: SingleChildScrollView(
+    return GestureDetector(
+      onTap: () {
+        FocusScope.of(context).requestFocus(FocusNode());
+      },
+      child: Scaffold(
+        // prevents keyboard from squishing screen
+        resizeToAvoidBottomInset: false,
+        appBar: AppBar(
+          title: Text('Daily Riddle'),
+          actions: <Widget>[
+            IconButton(
+              icon: Icon(Icons.settings),
+              onPressed: () => ModalUtils.showUserIdModal(context),
+            ),
+          ],
+        ),
+        body: Center(
+          child: FutureBuilder<DailyRiddle>(
+            future: dailyRiddle,
+            builder: (context, snapshot) {
+              if (snapshot.hasData) {
+                return Column(
+                  children: [
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: EdgeInsets.all(16.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(height: 24),
+                            Text(
+                              snapshot.data!.riddle,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 24),
+                            ),
+                            SizedBox(height: 24),
+                            TextField(
+                              controller: answerController,
+                              decoration: InputDecoration(
+                                labelText: 'Your answer',
+                                border: OutlineInputBorder(),
+                              ),
+                              textInputAction: TextInputAction.done,
+                              onSubmitted: (value) {
+                                // 'value' contains the text that was in the text field when the "done" button was pressed
+                                // Call your function here
+                                _checkAnswer(
+                                  answerController.text,
+                                  snapshot.data!.correctAnswer,
+                                  snapshot.data!.id,
+                                );
+                              },
+                            ),
+                            SizedBox(height: 16),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: () {
+                                      _checkAnswer(
+                                        answerController.text,
+                                        snapshot.data!.correctAnswer,
+                                        snapshot.data!.id,
+                                      );
+                                    },
+                                    child: Text('Guess Answer'),
+                                  ),
+                                ),
+                                SizedBox(
+                                    width:
+                                        8), // Optional: add some space between the buttons
+                                Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: () {
+                                      _showHintsDialog(
+                                          context, snapshot.data!.hints);
+                                    },
+                                    child: Text('Hints'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Spacer(),
+                    Padding(
                       padding: EdgeInsets.all(16.0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      child: Row(
                         children: [
-                          SizedBox(height: 24),
-                          Text(
-                            snapshot.data!.riddle,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 24),
-                          ),
-                          SizedBox(height: 24),
-                          TextField(
-                            controller: answerController,
-                            decoration: InputDecoration(
-                              labelText: 'Your answer',
-                              border: OutlineInputBorder(),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Guess Counter',
+                                  style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                                Text(
+                                  'Guesses: $_guessesUsed / $_maxGuesses',
+                                  style: TextStyle(fontSize: 16),
+                                ),
+                              ],
                             ),
                           ),
-                          SizedBox(height: 16),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              Expanded(
-                                child: ElevatedButton(
-                                  onPressed: () {
-                                    _checkAnswer(
-                                      answerController.text,
-                                      snapshot.data!.correctAnswer,
-                                      snapshot.data!.id,
-                                    );
-                                  },
-                                  child: Text('Guess Answer'),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Hints',
+                                  style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold),
                                 ),
-                              ),
-                              SizedBox(
-                                  width:
-                                      8), // Optional: add some space between the buttons
-                              Expanded(
-                                child: ElevatedButton(
-                                  onPressed: () {
-                                    _showHintsDialog(
-                                        context, snapshot.data!.hints);
-                                  },
-                                  child: Text('Hints'),
+                                Text(
+                                  'Used: $_usedHints / ${snapshot.data!.hints.length}',
+                                  style: TextStyle(fontSize: 16),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ],
                       ),
                     ),
-                  ),
-                  Spacer(),
-                  Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'Guess Counter',
-                                style: TextStyle(
-                                    fontSize: 18, fontWeight: FontWeight.bold),
-                              ),
-                              Text(
-                                'Guesses: $_guessesUsed / $_maxGuesses',
-                                style: TextStyle(fontSize: 16),
-                              ),
-                            ],
-                          ),
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Text(
+                          _formatDuration(_elapsedTime),
+                          style: TextStyle(
+                              fontSize: 24, fontWeight: FontWeight.bold),
                         ),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'Hints',
-                                style: TextStyle(
-                                    fontSize: 18, fontWeight: FontWeight.bold),
-                              ),
-                              Text(
-                                'Used: $_usedHints / ${snapshot.data!.hints.length}',
-                                style: TextStyle(fontSize: 16),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Text(
-                        _formatDuration(_elapsedTime),
-                        style: TextStyle(
-                            fontSize: 24, fontWeight: FontWeight.bold),
                       ),
                     ),
-                  ),
-                  SizedBox(height: 15),
-                ],
-              );
-            } else if (snapshot.hasError) {
-              return Text('Error: ${snapshot.error}');
-            }
-            return CircularProgressIndicator();
-          },
+                    SizedBox(height: 15),
+                  ],
+                );
+              } else if (snapshot.hasError) {
+                return Text('Error: ${snapshot.error}');
+              }
+              return CircularProgressIndicator();
+            },
+          ),
         ),
       ),
     );
