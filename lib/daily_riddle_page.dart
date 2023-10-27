@@ -275,13 +275,61 @@ class _DailyRiddlePageState extends State<DailyRiddlePage>
   }
 
   void _checkAnswer(String answer, String correctAnswer, int riddleId) {
-    if (answer.trim().toLowerCase() == correctAnswer.trim().toLowerCase()) {
+    if (answer.isEmpty || answer.trim().isEmpty) {
+      // don't count empty input
+      return;
+    }
+
+    // Split the user's answer into words.  If the correct answer is "river",
+    // we want to accept guesses like "the river" or "a river".
+    List<String> answer_words = answer.trim().toLowerCase().split(' ');
+    String normalizedCorrectAnswer = correctAnswer.trim().toLowerCase();
+
+    for (String word in answer_words) {
+      if (word == normalizedCorrectAnswer) {
+        setState(() {
+          _guessesUsed++;
+          SharedPreferencesHelper.setGuessesUsed(_guessesUsed);
+          _puzzleCompleted = true;
+          SharedPreferencesHelper.setPuzzleCompleted(true);
+          SharedPreferencesHelper.setCompletedSuccessfully(true);
+        });
+
+        apiClient.attemptRiddle(
+            riddleId: riddleId,
+            numberOfGuesses: _guessesUsed,
+            numberOfHintsUsed: _usedHints,
+            timeTaken: _elapsedTime.inSeconds,
+            status: 'won');
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PuzzleCompletedPage(
+              isSuccess: true,
+              correctAnswer: correctAnswer,
+              guessesUsed: _guessesUsed,
+              hintsUsed: _usedHints,
+              timeTaken: _elapsedTime,
+            ),
+          ),
+        );
+
+        return;
+      }
+    }
+
+    // Only get here if no answer matches
+    setState(() {
+      _guessesUsed++;
+      SharedPreferencesHelper.setGuessesUsed(_guessesUsed);
+      answerController.clear(); // Clear the input after an incorrect guess
+    });
+
+    if (_guessesUsed >= _maxGuesses) {
       setState(() {
-        _guessesUsed++;
-        SharedPreferencesHelper.setGuessesUsed(_guessesUsed);
         _puzzleCompleted = true;
         SharedPreferencesHelper.setPuzzleCompleted(true);
-        SharedPreferencesHelper.setCompletedSuccessfully(true);
       });
 
       apiClient.attemptRiddle(
@@ -289,13 +337,13 @@ class _DailyRiddlePageState extends State<DailyRiddlePage>
           numberOfGuesses: _guessesUsed,
           numberOfHintsUsed: _usedHints,
           timeTaken: _elapsedTime.inSeconds,
-          status: 'won');
+          status: 'lost');
 
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (context) => PuzzleCompletedPage(
-            isSuccess: true,
+            isSuccess: false,
             correctAnswer: correctAnswer,
             guessesUsed: _guessesUsed,
             hintsUsed: _usedHints,
@@ -304,45 +352,12 @@ class _DailyRiddlePageState extends State<DailyRiddlePage>
         ),
       );
     } else {
-      setState(() {
-        _guessesUsed++;
-        SharedPreferencesHelper.setGuessesUsed(_guessesUsed);
-        answerController.clear(); // Clear the input after an incorrect guess
-      });
-
-      if (_guessesUsed >= _maxGuesses) {
-        setState(() {
-          _puzzleCompleted = true;
-          SharedPreferencesHelper.setPuzzleCompleted(true);
-        });
-
-        apiClient.attemptRiddle(
-            riddleId: riddleId,
-            numberOfGuesses: _guessesUsed,
-            numberOfHintsUsed: _usedHints,
-            timeTaken: _elapsedTime.inSeconds,
-            status: 'lost');
-
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PuzzleCompletedPage(
-              isSuccess: false,
-              correctAnswer: correctAnswer,
-              guessesUsed: _guessesUsed,
-              hintsUsed: _usedHints,
-              timeTaken: _elapsedTime,
-            ),
-          ),
-        );
-      } else {
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return _getIncorrectGuessDialog();
-          },
-        );
-      }
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return _getIncorrectGuessDialog();
+        },
+      );
     }
   }
 
