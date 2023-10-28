@@ -37,8 +37,8 @@ class _DailyRiddlePageState extends State<DailyRiddlePage>
     super.initState();
     dailyRiddle = null;
     WidgetsBinding.instance!.addObserver(this);
-    _riddleCheckTimer =
-        Timer.periodic(Duration(minutes: 30), (Timer t) => _getNewRiddle());
+    _riddleCheckTimer = Timer.periodic(Duration(minutes: 5),
+        (Timer t) => ModalUtils.getNewRiddle(dailyRiddle, apiClient, context));
     _initialize();
     _startTimer();
   }
@@ -47,46 +47,7 @@ class _DailyRiddlePageState extends State<DailyRiddlePage>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.resumed) {
-      _getNewRiddle();
-    }
-  }
-
-  Future<void> _getNewRiddle() async {
-    DailyRiddle? currentRiddle = await dailyRiddle;
-    if (currentRiddle == null) return; // Handle when currentRiddle is null
-
-    DailyRiddle? newRiddle = await ModalUtils.getNewRiddleIfDifferent(
-        apiClient, widget.userId, currentRiddle);
-    print("checked new riddle");
-    if (newRiddle != null) {
-      setState(() {
-        dailyRiddle = Future.value(newRiddle);
-        _guessesUsed = 0;
-        _usedHints = 0;
-        _puzzleCompleted = false;
-        _revealedHints = Set();
-        _elapsedTime = Duration();
-      });
-
-      _updateStoredRiddle();
-      showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: Text('New Riddle Available!'),
-            content: Text(
-                'A new riddle has been fetched from the server, time to challenge your brain!'),
-            actions: [
-              TextButton(
-                child: Text('OK'),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-              ),
-            ],
-          );
-        },
-      );
+      ModalUtils.getNewRiddle(dailyRiddle, apiClient, context);
     }
   }
 
@@ -164,6 +125,7 @@ class _DailyRiddlePageState extends State<DailyRiddlePage>
               guessesUsed: guesses,
               hintsUsed: hints,
               timeTaken: _elapsedTime,
+              currentRiddle: dailyRiddle,
             ),
           ),
         );
@@ -311,6 +273,7 @@ class _DailyRiddlePageState extends State<DailyRiddlePage>
               guessesUsed: _guessesUsed,
               hintsUsed: _usedHints,
               timeTaken: _elapsedTime,
+              currentRiddle: dailyRiddle,
             ),
           ),
         );
@@ -348,6 +311,7 @@ class _DailyRiddlePageState extends State<DailyRiddlePage>
             guessesUsed: _guessesUsed,
             hintsUsed: _usedHints,
             timeTaken: _elapsedTime,
+            currentRiddle: dailyRiddle,
           ),
         ),
       );

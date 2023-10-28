@@ -1,3 +1,4 @@
+import 'package:daily_riddle_app/daily_riddle.dart';
 import 'package:flutter/material.dart';
 import 'package:share/share.dart';
 import 'dart:async';
@@ -10,6 +11,7 @@ class PuzzleCompletedPage extends StatefulWidget {
   final int guessesUsed;
   final int hintsUsed;
   final Duration timeTaken; // time in seconds
+  final Future<DailyRiddle>? currentRiddle;
 
   PuzzleCompletedPage({
     required this.isSuccess,
@@ -17,23 +19,39 @@ class PuzzleCompletedPage extends StatefulWidget {
     required this.guessesUsed,
     required this.hintsUsed,
     required this.timeTaken,
+    required this.currentRiddle,
   });
 
   @override
   _PuzzleCompletedPageState createState() => _PuzzleCompletedPageState();
 }
 
-class _PuzzleCompletedPageState extends State<PuzzleCompletedPage> {
+class _PuzzleCompletedPageState extends State<PuzzleCompletedPage>
+    with WidgetsBindingObserver {
   late Future<Map<String, dynamic>?> _fetchStatsFuture;
+  Timer? _riddleCheckTimer;
+  final apiClient = ApiClient();
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance!.addObserver(this);
+    _riddleCheckTimer = Timer.periodic(
+        Duration(minutes: 5),
+        (Timer t) =>
+            ModalUtils.getNewRiddle(widget.currentRiddle, apiClient, context));
     _fetchStatsFuture = _fetchStatisticsData();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      ModalUtils.getNewRiddle(widget.currentRiddle, apiClient, context);
+    }
+  }
+
   Future<Map<String, dynamic>?> _fetchStatisticsData() async {
-    final apiClient = ApiClient();
     return await apiClient.getStatistics();
   }
 

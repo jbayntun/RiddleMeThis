@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'shared_prefereces_helper.dart';
 import 'package:daily_riddle_app/daily_riddle.dart';
 import 'api_client.dart';
+import 'daily_riddle_page.dart';
 
 class ModalUtils {
   static Future<void> _copyUserIdToClipboard(BuildContext context) async {
@@ -65,6 +66,40 @@ class ModalUtils {
     } catch (e) {
       print('Error getting new riddle: $e');
       return null;
+    }
+  }
+
+  static Future<void> getNewRiddle(Future<DailyRiddle>? currentRiddle,
+      ApiClient api, BuildContext context) async {
+    if (currentRiddle == null) return; // Handle when currentRiddle is null
+
+    String userId = (await SharedPreferencesHelper.getUserKey()) as String;
+    DailyRiddle r = await currentRiddle;
+    DailyRiddle? newRiddle = await getNewRiddleIfDifferent(api, userId, r);
+    print("checked new riddle");
+    if (newRiddle != null) {
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('New Riddle Available!'),
+            content: Text(
+                'A new riddle has been fetched from the server, time to challenge your brain!'),
+            actions: [
+              TextButton(
+                child: Text('OK'),
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => DailyRiddlePage(userId: userId)),
+                  );
+                },
+              ),
+            ],
+          );
+        },
+      );
     }
   }
 }
